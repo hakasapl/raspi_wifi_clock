@@ -1,5 +1,6 @@
 import RPi.GPIO as gpio
-from time import sleep
+import time
+from datetime import datetime
 
 class SegmentShifter():
 
@@ -62,13 +63,8 @@ gpio.setup(q3_gate, gpio.OUT)
 gpio.setup(q4_gate, gpio.OUT)
 gpio.setup(q5_gate, gpio.OUT)
 
-# DEBUG
+# decimal output is always on
 gpio.output(q1_gate, gpio.HIGH)
-gpio.output(q2_gate, gpio.HIGH)
-gpio.output(q3_gate, gpio.HIGH)
-gpio.output(q4_gate, gpio.HIGH)
-gpio.output(q5_gate, gpio.HIGH)
-# END DEBUG
 
 D3D4 = 0b1000000000000000
 D1 = 0b0100000000000000
@@ -82,33 +78,66 @@ C = 0b0000000010000000
 D = 0b0000000001000000
 E = 0b0000000000100000
 
+digit0 = A | B | C | D | E | F
+digit1 = B | C
+digit2 = A | B | G | E | D
+digit3 = A | B | G | C | D
+digit4 = F | G | B | C
+digit5 = A | F | G | C | D
+digit6 = A | F | G | E | D | C
+digit7 = A | B | C
+digit8 = A | B | C | D | E | F | G
+digit9 = A | B | G | F | C | D
+
 def getStream(number):
     if number == 0:
-        return A | B | C | D | E | F
+        return digit0
     elif number == 1:
-        return B | C
+        return digit1
     elif number == 2:
-        return A | B | G | E | D
+        return digit2
     elif number == 3:
-        return A | B | G | C | D
+        return digit3
     elif number == 4:
-        return F | G | B | C
+        return digit4
     elif number == 5:
-        return A | F | G | C | D
+        return digit5
     elif number == 6:
-        return A | F | G | E | D | C
+        return digit6
     elif number == 7:
-        return A | B | C
+        return digit7
     elif number == 8:
-        return A | B | C | D | E | F | G
+        return digit8
     elif number == 9:
-        return A | B | G | F | C | D
+        return digit9
+
+def stopDrains():
+    gpio.output(q2_gate, gpio.LOW)
+    gpio.output(q3_gate, gpio.LOW)
+    gpio.output(q4_gate, gpio.LOW)
+    gpio.output(q5_gate, gpio.LOW)
 
 while True:
-    for i in range(10):
-        shifter.setValue(getStream(i))
-        sleep(1)
-    #shifter.setValue(bits)
-    #sleep(1)
-
-
+    # get current time
+    now = datetime.now()
+    ctime = now.strftime("%H%M")
+    
+    for i in range(len(ctime)):
+        stopDrains()
+        shifter.setValue(getStream(int(ctime[i])))
+        if i == 0:
+            # First hour digit
+            gpio.output(q2_gate, gpio.HIGH)
+        elif i == 1:
+            # Second hour digit
+            gpio.output(q3_gate, gpio.HIGH)
+        elif i == 2:
+            # Third hour digit
+            gpio.output(q4_gate, gpio.HIGH)
+        elif i == 3:
+            # Fourth hour digit
+            gpio.output(q5_gate, gpio.HIGH)
+        
+        timer = time.time()
+        while time.time() <= timer + 0.001:
+            continue
